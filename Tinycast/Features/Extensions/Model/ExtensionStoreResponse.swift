@@ -29,10 +29,13 @@ enum ExtensionStoreResponse {
         let author: Author?
         let icons: Icons?
         let commands: [Command]?
+        let categories: [String]?
         let downloadCount: Int?
         let downloadURL: String?
         let commitSha: String?
         let relativePath: String?
+        let readmeURL: String?
+        let storeURL: String?
         let status: String?
 
         struct Author: Decodable {
@@ -45,14 +48,18 @@ enum ExtensionStoreResponse {
         }
         struct Command: Decodable {
             let name: String?
+            let title: String?
+            let description: String?
         }
 
         enum CodingKeys: String, CodingKey {
-            case id, name, title, description, author, icons, commands, status
+            case id, name, title, description, author, icons, commands, categories, status
             case downloadCount = "download_count"
             case downloadURL = "download_url"
             case commitSha = "commit_sha"
             case relativePath = "relative_path"
+            case readmeURL = "readme_url"
+            case storeURL = "store_url"
         }
     }
 
@@ -71,7 +78,16 @@ enum ExtensionStoreResponse {
                 author: entry.author?.name ?? entry.author?.handle ?? "",
                 lightIconURL: entry.icons?.light.flatMap(URL.init(string:)),
                 darkIconURL: entry.icons?.dark.flatMap(URL.init(string:)),
-                commandCount: entry.commands?.count ?? 0,
+                commands: (entry.commands ?? []).compactMap { command in
+                    guard let name = command.name else { return nil }
+                    return ExtensionListing.Command(
+                        name: name, title: command.title ?? name,
+                        summary: command.description ?? "")
+                },
+                categories: entry.categories ?? [],
+                readmeURL: entry.readmeURL.flatMap(URL.init(string:))
+                    .flatMap(ExtensionReadme.rawURL(from:)),
+                pageURL: entry.storeURL.flatMap(URL.init(string:)),
                 downloadCount: entry.downloadCount,
                 registryID: registry.id,
                 registryName: registry.name,
@@ -134,19 +150,22 @@ enum ExtensionStoreResponse {
             let description: String?
             let author: String?
             let icon: String?
+            let categories: [String]?
             let commands: [Command]?
-            struct Command: Decodable { let name: String? }
+            struct Command: Decodable {
+                let name: String?
+                let title: String?
+                let description: String?
+            }
         }
         guard let manifest = try? JSONDecoder().decode(Manifest.self, from: data),
             let name = manifest.name ?? manifest.title
         else { return nil }
+        let raw =
+            "https://raw.githubusercontent.com/\(registry.owner)/\(registry.repository)"
+            + "/\(registry.ref)/\(registry.path)/\(folder)"
         // One artwork per manifest, so both appearances resolve to it.
-        let manifestIcon = manifest.icon.flatMap {
-            URL(
-                string:
-                    "https://raw.githubusercontent.com/\(registry.owner)/\(registry.repository)"
-                    + "/\(registry.ref)/\(registry.path)/\(folder)/assets/\($0)")
-        }
+        let manifestIcon = manifest.icon.flatMap { URL(string: "\(raw)/assets/\($0)") }
         return ExtensionListing(
             id: "\(registry.id.uuidString)/\(folder)",
             name: name,
@@ -155,7 +174,18 @@ enum ExtensionStoreResponse {
             author: manifest.author ?? "",
             lightIconURL: manifestIcon,
             darkIconURL: manifestIcon,
-            commandCount: manifest.commands?.count ?? 0,
+            commands: (manifest.commands ?? []).compactMap { command in
+                guard let commandName = command.name else { return nil }
+                return ExtensionListing.Command(
+                    name: commandName, title: command.title ?? commandName,
+                    summary: command.description ?? "")
+            },
+            categories: manifest.categories ?? [],
+            readmeURL: URL(string: "\(raw)/README.md"),
+            pageURL: URL(
+                string:
+                    "https://github.com/\(registry.owner)/\(registry.repository)/tree"
+                    + "/\(registry.ref)/\(registry.path)/\(folder)"),
             downloadCount: nil,
             registryID: registry.id,
             registryName: registry.name,

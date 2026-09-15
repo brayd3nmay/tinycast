@@ -35,6 +35,7 @@ struct ExtensionsSettingsView: View {
 
             Group {
                 compatibility
+                FeatureCommandsSection(owner: .extensions, anchor: .extensionsCommands)
                 install
                 library
             }

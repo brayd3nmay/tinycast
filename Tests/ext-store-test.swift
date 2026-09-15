@@ -86,9 +86,12 @@ struct ExtensionStoreTests {
           {"id":"abc","name":"coffee","title":"Coffee","description":"Prevent sleep",
            "author":{"name":"Max Schmidt","handle":"mooxl"},
            "icons":{"light":"https://files.raycast.com/icon","dark":null},
-           "commands":[{"name":"caffeinate"},{"name":"decaffeinate"}],
-           "download_count":124218,"status":"active",
+           "commands":[{"name":"caffeinate","title":"Caffeinate","description":"Stay awake"},
+                       {"name":"decaffeinate"}],
+           "categories":["Productivity"],"download_count":124218,"status":"active",
            "download_url":"https://example.com/coffee.zip",
+           "store_url":"https://www.raycast.com/mooxl/coffee",
+           "readme_url":"https://github.com/raycast/extensions/tree/c325a1a/extensions/coffee/README.md",
            "commit_sha":"c325a1a","relative_path":"extensions/coffee/"},
           {"id":"def","name":"gone","title":"Gone","status":"active"},
           {"id":"ghi","name":"dead","title":"Dead","status":"kill_listed",
@@ -111,6 +114,18 @@ struct ExtensionStoreTests {
         check("the title is read", coffee.title == "Coffee")
         check("the author's name wins over the handle", coffee.author == "Max Schmidt")
         check("commands are counted", coffee.commandCount == 2)
+        check("a command keeps its own words", coffee.commands.first?.summary == "Stay awake")
+        // A command with no title of its own still has to be nameable in the preview.
+        check("a bare command falls back to its name", coffee.commands.last?.title == "decaffeinate")
+        check("categories are read", coffee.categories == ["Productivity"])
+        check(
+            "the page is the store's own",
+            coffee.pageURL?.absoluteString == "https://www.raycast.com/mooxl/coffee")
+        // The endpoint hands back a browse URL, which is a page rather than something fetchable.
+        check(
+            "the README is stored raw",
+            coffee.readmeURL?.absoluteString
+                == "https://raw.githubusercontent.com/raycast/extensions/c325a1a/extensions/coffee/README.md")
         check("downloads are read", coffee.downloadCount == 124_218)
         let icon = "https://files.raycast.com/icon"
         check("the icon resolves", coffee.iconURL(isDark: false)?.absoluteString == icon)
@@ -196,7 +211,8 @@ struct ExtensionStoreTests {
         let registry = ExtensionRegistry.officialGitHub
         let manifest = """
             {"name":"coffee","title":"Coffee","description":"Prevent sleep","author":"mooxl",
-             "icon":"extension-icon.png","commands":[{"name":"caffeinate"}]}
+             "icon":"extension-icon.png","categories":["Productivity"],
+             "commands":[{"name":"caffeinate","title":"Caffeinate","description":"Stay awake"}]}
             """
         guard
             let listing = ExtensionStoreResponse.parseManifestSummary(
@@ -208,6 +224,16 @@ struct ExtensionStoreTests {
         check("the title is read", listing.title == "Coffee")
         check("the author is read", listing.author == "mooxl")
         check("commands are counted", listing.commandCount == 1)
+        check("a command keeps its own words", listing.commands.first?.summary == "Stay awake")
+        check("categories are read", listing.categories == ["Productivity"])
+        check(
+            "the README is addressed in the folder",
+            listing.readmeURL?.absoluteString
+                == "https://raw.githubusercontent.com/raycast/extensions/main/extensions/coffee/README.md")
+        check(
+            "the page is the folder on GitHub",
+            listing.pageURL?.absoluteString
+                == "https://github.com/raycast/extensions/tree/main/extensions/coffee")
         check("no download count is claimed", listing.downloadCount == nil)
         check("source has to be built", listing.needsBuild)
         check(

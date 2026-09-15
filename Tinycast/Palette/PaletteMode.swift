@@ -18,6 +18,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case customCommandArguments
     /// A Raycast extension command rendering into the palette.
     case extensionCommand
+    /// Browsing the registries: search, preview and install without leaving the palette.
+    case extensionStore
 
     var id: String { rawValue }
 
@@ -40,6 +42,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .customCommandArguments: return CustomCommand.sfSymbol
         case .snippets: return "curlybraces"
         case .extensionCommand: return "puzzlepiece.extension"
+        case .extensionStore: return "storefront"
         }
     }
     var placeholder: String {
@@ -61,6 +64,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .customCommandArguments: return "Enter a value…"
         // Replaced by the command's own `searchBarPlaceholder` whenever it declares one.
         case .extensionCommand: return "Search…"
+        case .extensionStore: return "Search extensions to install…"
         }
     }
 }

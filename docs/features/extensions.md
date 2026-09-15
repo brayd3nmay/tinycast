@@ -5,7 +5,7 @@ produces, rendered natively into the palette. No Electron, no browser, no Node.j
 
 - [How it works](#how-it-works) · [The JS runtime](#the-js-runtime) ·
   [The Swift host](#the-swift-host) · [Rendering](#rendering)
-- [Turning it on](#turning-it-on) · [Installing extensions](#installing-extensions) ·
+- [Turning it on](#turning-it-on) · [The store](#the-store) · [Installing extensions](#installing-extensions) ·
   [Registries](#registries) · [Shortcuts](#shortcuts) · [Aliases](#aliases) · [Deeplinks](#deeplinks) ·
   [What's supported](#whats-supported) ·
   [What isn't](#what-isnt-supported-yet) · [Working on the runtime](#working-on-the-runtime)
@@ -29,6 +29,11 @@ produces, rendered natively into the palette. No Electron, no browser, no Node.j
   running command, discards the JS context, empties the installed set and clears the launcher rows;
   `refresh()` returns early while it is off, so nothing is scanned and nothing is held. Enabling is also
   consent to run third-party code, so it confirms first and never rides a settings backup.
+- **The store is one surface, and it is the palette's.** `ExtensionStoreScreen` owns row order the
+  way every other screen does, and `ExtensionStoreSession` holds the whole visit — results, the
+  selection's README and each install's progress — so nothing about browsing survives leaving the
+  screen. It draws only with views owned under `Features/Extensions/`, and it is hidden with
+  `extensionsEnabled`: searching for third-party code to run is the same consent as running it.
 - **`SymbolCatalog` reads a system bundle, not API.** The list comes from `CoreGlyphs.bundle` at
   runtime; every read stays optional and falls back to `SymbolCatalog.suggested`, and Apple's restricted
   marks are never offered.
@@ -128,6 +133,11 @@ Two host-call flavours:
 | `Model/ExtensionAppearance.swift` | the per-extension icon override and its tint palette |
 | `Service/ExtensionAppearanceStore.swift` | where those overrides persist |
 | `Service/SymbolCatalog.swift` | the SF Symbol list read from `CoreGlyphs.bundle` |
+| `Model/ExtensionReadme.swift` | a listing's README: the raw URL for a browse link, and relative images |
+| `Service/ExtensionStoreSession.swift` | the store visit — search, the selected README, install progress |
+| `UI/ExtensionStoreScreen.swift` | the store as a palette screen, with its ⌘K rows |
+| `UI/ExtensionStoreList.swift` | its result rows and empty states |
+| `UI/ExtensionStoreDetail.swift` | the preview pane: header, commands and rendered README |
 | `UI/ExtensionScreen.swift` | flattens one screen into the palette's row order |
 | `UI/ExtensionCommandScreen.swift` | that order adapted to `PaletteScreen`, so the flat selection indexes it |
 | `UI/ExtensionCoordinator.swift` | launching, leaving, and every host callback that touches a surface |
@@ -360,6 +370,34 @@ and makes the extension a keyword for every command it ships — `lucide` finds 
 matched in the launcher's weakest literal band, so a third-party title can never take a query from a
 real app; see [launcher.md](launcher.md#owner-names).
 
+## The store
+
+**Search Extension Store** opens `.extensionStore`: Raycast's store and every other enabled registry
+in one palette list, previewed beside it and installed with ↵ — nothing about finding an extension
+needs Settings. It is a `.command` like any other, so it takes an alias, a shortcut and a launcher
+checkbox, and `extensionsEnabled` hides it with the rest of the feature.
+
+- **The list** is `ExtensionStoreList`: icon, title, author, and either the install count or a
+  checkmark for something already installed. While an install runs, that trailing slot is its
+  spinner instead — one slot, so the row can never say two things at once.
+- **The preview** is `ExtensionStoreDetail`: the icon at double row size, the listing's own summary,
+  its categories, every command it declares with that command's description, and the README rendered
+  by the same `ExtensionMarkdownView` a `Detail` command draws through.
+- **The README is fetched, not guessed.** The store hands back a `github.com/…/tree/…` *page*, which
+  is not something that can be read; `ExtensionReadme.rawURL` walks it to its `raw.githubusercontent`
+  twin, and `absoluteImages` resolves the relative image paths a README is written with against the
+  directory it came from — otherwise every screenshot in one renders as its alt text. It arrives on
+  the same cacheless session a search does, and is capped at 256 KB.
+- **Arrowing down a list does not fetch a README per row.** The load is driven by the detail pane's
+  `task(id:)`, so moving the selection cancels the one under way, and the 200 ms it sleeps first is
+  what a pass-through row never gets past.
+- ↵ installs (or reinstalls), ⌘↵ opens the extension's own page, and ⌘K adds Copy Link and — for
+  something already installed — Uninstall. Progress and failure both land on the session: the row
+  shows a spinner or a warning glyph, and the pane says what actually happened.
+
+Settings › Extensions keeps its own **Search…** sheet, the way Snippets and Quicklinks each have a
+pane as well as a palette screen; the sheet manages a library, the store screen is the fast way in.
+
 ## Installing extensions
 
 Extensions live in `~/Library/Application Support/<bundle id>/extensions/<name>/`, keyed by bundle id
@@ -367,9 +405,10 @@ like everything else, so a Debug build never shares installs with a release chan
 `package.json`, `assets/` and one `<command>.js` per command — byte-for-byte the layout Raycast's own
 build produces.
 
-Settings → Extensions offers three routes, under **Install New**:
+Four routes reach that layout — the palette's own [store](#the-store), and three in
+Settings → Extensions under **Install New**:
 
-1. **Search Registries…** — searches every enabled registry and installs from any of them. See below.
+1. **Search Registries…** — the same search as the store screen, in a sheet. See below.
 2. **Import from Raycast** — copies the already-built bundles out of a local Raycast. Nothing is
    compiled, so no Node, npm or network is involved. The pane also scans whenever it opens, and says
    so when Raycast has something Tinycast doesn't — installing in Raycast otherwise leaves no trace
