@@ -1,0 +1,97 @@
+# Conductor configuration for this fork — machine-local, deliberately not shared upstream.
+# Reference: https://conductor.build/docs/reference/scripts
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+# `xcode-select` points at the Command Line Tools here, whose swiftc has no SwiftUI macro plugin.
+[environment_variables.local]
+DEVELOPER_DIR = "/Applications/Xcode.app/Contents/Developer"
+
+# Only meaningful while the `website` run script is up.
+[[preview_urls]]
+name = "Website (dev)"
+url = "http://localhost:$CONDUCTOR_PORT"
+
+[scripts]
+# Debug is one channel system-wide — `com.tinycast.app.dev` prefs, global hotkeys, the hidutil remap —
+# and run-tests.sh compiles into a shared $TMPDIR/tinycast-harness, so workspaces must take turns.
+run_mode = "nonconcurrent"
+
+setup = '''
+set -u
+
+if [ "${CONDUCTOR_IS_LOCAL:-1}" != "1" ]; then
+    echo "Cloud workspace: Tinycast needs macOS + Xcode 26, so only website/ and docs/ are workable here."
+    exit 0
+fi
+
+[ -d /Applications/Xcode.app ] || {
+    echo "✗ Xcode 26 must be installed at /Applications/Xcode.app — see docs/development.md"
+    exit 1
+}
+
+# swiftlint gates the definition of done; xcodegen is needed after any project.yml edit.
+for tool in swiftlint xcodegen; do
+    command -v "$tool" >/dev/null && continue
+    brew install "$tool" || echo "⚠ could not install $tool — run: brew install $tool"
+done
+
+# Without -v: a self-signed cert is never "valid" to the trust policy, so -v hides the one we sign with.
+security find-identity -p codesigning 2>/dev/null | grep -q "Tinycast Self-Signed" ||
+    echo "⚠ signing identity 'Tinycast Self-Signed' missing — Debug builds will not sign (docs/signing.md §1)."
+
+# Needed only to regenerate Resources/RaycastRuntime.generated.js; building the app needs no Node.
+# STRICT_DEP_BUILDS: pnpm blocks esbuild's postinstall, which it does not need — its binary ships
+# prebuilt in the platform package — and would otherwise report the install as failed.
+if command -v pnpm >/dev/null; then
+    (cd Scripts/raycast-runtime && PNPM_CONFIG_STRICT_DEP_BUILDS=false pnpm install --frozen-lockfile) ||
+        echo "⚠ pnpm install failed — Scripts/raycast-runtime/build.mjs will not run."
+else
+    echo "⚠ pnpm not found — needed only to rebuild the extension runtime."
+fi
+
+echo "✓ Workspace ready. Run ▸ app builds Debug and launches Tinycast Dev.app."
+'''
+
+# Derived data only; leaving it behind gives Spotlight a second Tinycast to index (FORK.md).
+archive = "rm -rf build"
+
+# `-quiet` here so the panel shows the app's own stdout — extensions have no other log (FORK.md).
+[scripts.run.app]
+command = '''
+DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+    xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
+    -derivedDataPath build/DerivedData -quiet build || exit 1
+
+# Two dev builds share one bundle id, and whichever registered a global hotkey first wins.
+killall "Tinycast Dev" 2>/dev/null
+
+exec "build/DerivedData/Build/Products/Debug/Tinycast Dev.app/Contents/MacOS/Tinycast Dev"
+'''
+default = true
+available_in = [ "local" ]
+icon = "play"
+
+[scripts.run.tests]
+command = 'DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" ./Scripts/run-tests.sh'
+available_in = [ "local" ]
+icon = "flask-conical"
+
+[scripts.run.lint]
+command = "./Scripts/lint.sh"
+available_in = [ "local" ]
+icon = "check-check"
+
+# Deliberately not quiet: the point of this one is reading the warnings (docs/testing.md).
+[scripts.run.build]
+command = '''
+DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+    xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
+    -derivedDataPath build/DerivedData build
+'''
+available_in = [ "local" ]
+icon = "hammer"
+
+[scripts.run.website]
+command = "npm install --no-audit --no-fund && npm run dev -- --port ${CONDUCTOR_PORT:-3000}"
+options = { cwd = "website" }
+icon = "globe"
