@@ -24,6 +24,8 @@ struct PermissionsSettingsView: View {
 
                 LabeledContent {
                     Button(accessibilityTrusted ? "Open…" : "Grant Access…") {
+                        // Settings only lists an app tccd has heard from, so ask before opening it.
+                        if !accessibilityTrusted { Permissions.ensureAccessibility() }
                         Permissions.openAccessibilitySettings()
                     }
                 } label: {
