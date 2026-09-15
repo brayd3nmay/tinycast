@@ -109,12 +109,20 @@ struct ExtensionListing: Identifiable, Hashable, Sendable {
     let title: String
     let summary: String
     let author: String
+    /// The store's user slug, which is what its detail endpoint is addressed by. Empty elsewhere.
+    let authorHandle: String
+    let authorAvatarURL: URL?
     /// A store may ship one artwork per appearance; a GitHub manifest names a single icon.
     let lightIconURL: URL?
     let darkIconURL: URL?
     let commandCount: Int
     /// Nil where a registry doesn't count downloads, which is every GitHub one.
     let downloadCount: Int?
+    let categories: [String]
+    /// The page a browser would show for it; nil for a registry with no site.
+    let storeURL: URL?
+    /// Ships AI tools, which Tinycast doesn't run; the row says so before anyone installs for them.
+    let hasAITools: Bool
     let registryID: UUID
     let registryName: String
     let source: Source

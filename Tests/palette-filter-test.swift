@@ -48,11 +48,18 @@ struct PaletteFilterTests {
         expect(
             resolve(mode: .fileSearch, accessory: true), .fileSearchFilter,
             "off an extension screen the flag cannot reach file search's own filter either")
+        expect(
+            resolve(mode: .extensionStore), .storeCategory,
+            "the store's category dropdown is its header filter")
+        expect(
+            resolve(mode: .extensionStore, accessory: true), .storeCategory,
+            "off an extension screen the flag cannot reach the store's category filter")
 
         // Every other mode was untouched by ⌘P before and has to stay that way.
         for mode in [
             PaletteMode.launcher, .ai, .aiHistory, .emoji, .calculatorHistory,
-            .quicklinks, .snippets, .schedule, .uninstall, .customCommandArguments
+            .quicklinks, .snippets, .schedule, .uninstall, .customCommandArguments,
+            .extensionStoreDetail
         ] {
             expect(
                 resolve(mode: mode), .ignored,

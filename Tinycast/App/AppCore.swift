@@ -48,6 +48,7 @@ final class AppCore {
     let customCommandArguments = CustomCommandArgumentSession()
     let notesStore: NotesStore
     let extensions: ExtensionManager
+    let extensionStore: ExtensionStoreSession
     let chatHistory: ChatHistoryStore
     let aiChat: AIChatState
     let aiSettings = AISettingsStore(
@@ -201,6 +202,7 @@ final class AppCore {
         let clipboardManager = ClipboardManager(store: clipboardStore, settings: settings)
         self.clipboardManager = clipboardManager
         extensions = ExtensionManager(clipboardStore: clipboardStore)
+        extensionStore = ExtensionStoreSession(extensions: extensions)
         snippetsStore = SnippetsStore()
         textInjector = TextInjector(
             clipboardManager: clipboardManager,

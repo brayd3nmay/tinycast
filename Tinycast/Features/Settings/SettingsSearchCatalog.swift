@@ -529,8 +529,11 @@ enum SettingsSearchCatalog {
             group: .extensionsInstalled, "Installed extensions",
             keywords: ["library", "uninstall", "preferences", "appearance", "alias", "shortcut"]),
         .init(
-            .extensionsInstall, "Search extensions",
-            keywords: ["store", "browse", "install", "registry"]),
+            .extensionsInstall, "Extension Store",
+            keywords: ["search", "browse", "install", "registry", "raycast"]),
+        .init(
+            group: .extensionsCommands, "Extension commands",
+            keywords: ["store", "shortcut", "alias", "hide"]),
         .init(
             group: .extensionsInstall, "Registries",
             keywords: ["github", "source", "store"]),

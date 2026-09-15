@@ -69,6 +69,24 @@ struct ExtensionStoreClient: Sendable {
         return try ExtensionStoreResponse.parseStore(data, registry: registry)
     }
 
+    // MARK: - Browsing the store
+
+    /// The store's front page, most installed first. Only the store ranks, so only it browses.
+    func browse(page: Int) async throws -> [ExtensionListing] {
+        guard let url = ExtensionStoreResponse.browseURL(page: page) else {
+            throw ExtensionStoreError.malformedResponse
+        }
+        return try ExtensionStoreResponse.parseStore(try await get(url), registry: .store)
+    }
+
+    func detail(for listing: ExtensionListing) async throws -> ExtensionStoreDetail {
+        guard
+            let url = ExtensionStoreResponse.detailURL(
+                handle: listing.authorHandle, name: listing.name)
+        else { throw ExtensionStoreError.malformedResponse }
+        return try ExtensionStoreResponse.parseDetail(try await get(url))
+    }
+
     /// A registry has no search, so the listing is ranked here and only the best few are read.
     private func searchGitHub(
         _ query: String, registry: ExtensionRegistry

@@ -20,6 +20,10 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case customCommandArguments
     /// A Raycast extension command rendering into the palette.
     case extensionCommand
+    /// The extension store: every registry searched, the front page browsed.
+    case extensionStore
+    /// One store listing's page, pushed over the store's results.
+    case extensionStoreDetail
 
     var id: String { rawValue }
 
@@ -44,6 +48,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .featureRequest: return "hammer"
         case .featureRequestChat: return "bubble.left.and.text.bubble.right"
         case .extensionCommand: return "puzzlepiece.extension"
+        case .extensionStore, .extensionStoreDetail: return "storefront"
         }
     }
     var placeholder: String {
@@ -67,6 +72,9 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .customCommandArguments: return "Enter a value…"
         // Replaced by the command's own `searchBarPlaceholder` whenever it declares one.
         case .extensionCommand: return "Search…"
+        case .extensionStore: return "Search Store for Extensions…"
+        // Hidden: the page has no field, and the chevron alone heads it.
+        case .extensionStoreDetail: return ""
         }
     }
 }

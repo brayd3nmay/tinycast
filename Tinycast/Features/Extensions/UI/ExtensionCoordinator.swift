@@ -31,8 +31,68 @@ final class ExtensionCoordinator {
 
     /// Applies both switches as they stand — on launch, and after a backup import moves them.
     func applyEnabled() {
+        let isEnabled = settings.extensionsEnabled
         extensions.setShowsInLauncher(settings.extensionsShowInLauncher)
-        Task { await extensions.setEnabled(settings.extensionsEnabled) }
+        core.appIndex.setCommandsVisible([.extensionStore], isEnabled)
+        Task { await extensions.setEnabled(isEnabled) }
+        guard !isEnabled else { return }
+        if paletteCoordinator.isShowing(.extensionStore)
+            || paletteCoordinator.isShowing(.extensionStoreDetail)
+        {
+            paletteCoordinator.hidePalette(restoreFocus: false)
+        }
+    }
+
+    // MARK: - The store
+
+    /// From the launcher, or from Settings, which the palette then floats over.
+    func showStore() {
+        paletteCoordinator.togglePalette(mode: .extensionStore)
+    }
+
+    /// The results stay underneath as the step back, query and highlight included.
+    func showStoreDetails(_ listing: ExtensionListing) {
+        core.extensionStore.open(listing)
+        paletteCoordinator.navigate(to: .extensionStoreDetail)
+    }
+
+    /// The row reports progress; the pill reports the end, which the row may have scrolled off.
+    func installFromStore(_ listing: ExtensionListing) {
+        Task {
+            do {
+                try await core.extensionStore.install(
+                    listing, packageManager: settings.extensionPackageManager,
+                    additionalSearchPaths: settings.extensionCustomSearchPaths)
+                core.showMessage("Installed \(listing.title)")
+            } catch {
+                core.showMessage(error.localizedDescription, tone: .danger)
+            }
+        }
+    }
+
+    func openStoreLink(_ url: URL) {
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        NSWorkspace.shared.open(url)
+    }
+
+    func copyStoreURL(_ listing: ExtensionListing) {
+        guard let url = listing.storeURL else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+        core.showMessage("Copied the extension's URL")
+    }
+
+    func viewStoreDeveloper(_ listing: ExtensionListing) {
+        guard !listing.authorHandle.isEmpty,
+            let url = URL(string: "https://www.raycast.com/\(listing.authorHandle)")
+        else { return }
+        openStoreLink(url)
+    }
+
+    /// What the store searches is decided in Settings, so the store links there.
+    func showRegistrySettings() {
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        settingsCoordinator.showSettings(tab: .extensions)
     }
 
     /// Also consent to run third-party JavaScript, so it asks before it starts.

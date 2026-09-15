@@ -6,7 +6,7 @@ produces, rendered natively into the palette. No Electron, no browser, no Node.j
 - [How it works](#how-it-works) · [The JS runtime](#the-js-runtime) ·
   [The Swift host](#the-swift-host) · [Rendering](#rendering)
 - [Turning it on](#turning-it-on) · [Installing extensions](#installing-extensions) ·
-  [Registries](#registries) · [Shortcuts](#shortcuts) · [Aliases](#aliases) · [Deeplinks](#deeplinks) ·
+  [The store](#the-store) · [Registries](#registries) · [Shortcuts](#shortcuts) · [Aliases](#aliases) · [Deeplinks](#deeplinks) ·
   [What's supported](#whats-supported) ·
   [What isn't](#what-isnt-supported-yet) · [Working on the runtime](#working-on-the-runtime)
 
@@ -131,6 +131,13 @@ Two host-call flavours:
 | `UI/ExtensionScreen.swift` | flattens one screen into the palette's row order |
 | `UI/ExtensionCommandScreen.swift` | that order adapted to `PaletteScreen`, so the flat selection indexes it |
 | `UI/ExtensionCoordinator.swift` | launching, leaving, and every host callback that touches a surface |
+| `Service/ExtensionStoreClient.swift` | search across registries, the store's front page, one listing's page, downloads |
+| `Service/ExtensionStoreSession.swift` | the store screen's state: results, the open listing, install progress |
+| `Model/ExtensionStoreResponse.swift` | the store's and GitHub's payloads, parsed |
+| `Model/ExtensionStoreDetail.swift` | a listing's page: screenshots, commands, contributors |
+| `Model/ExtensionStoreCategory.swift` | the category dropdown's names, matched client-side |
+| `UI/ExtensionStoreScreen.swift` | the `.extensionStore` palette mode and its ⌘K rows |
+| `UI/ExtensionStoreDetailScreen.swift` | the `.extensionStoreDetail` mode: install, screenshots, preview |
 
 `ExtensionRuntime` is `@unchecked Sendable` deliberately and narrowly: every `JSContext` / `JSValue`
 touch happens on one private serial queue, and only plain `Sendable` values cross in or out
@@ -367,9 +374,11 @@ like everything else, so a Debug build never shares installs with a release chan
 `package.json`, `assets/` and one `<command>.js` per command — byte-for-byte the layout Raycast's own
 build produces.
 
-Settings → Extensions offers three routes, under **Install New**:
+The Extension Store is a palette screen, so nothing about finding or installing an extension goes
+through Settings. Settings → Extensions still offers three routes, under **Install New**:
 
-1. **Search Registries…** — searches every enabled registry and installs from any of them. See below.
+1. **Open Store…** — the same store screen the **Extension Store** launcher command opens. See
+   [The store](#the-store).
 2. **Import from Raycast** — copies the already-built bundles out of a local Raycast. Nothing is
    compiled, so no Node, npm or network is involved. The pane also scans whenever it opens, and says
    so when Raycast has something Tinycast doesn't — installing in Raycast otherwise leaves no trace
@@ -381,6 +390,30 @@ Settings → Extensions offers three routes, under **Install New**:
 
 Only `package.json`, the built commands and `assets/` are copied — never `node_modules` or the
 multi-megabyte `.js.map` Raycast writes beside each bundle.
+
+## The store
+
+`Extension Store` is a launcher command owned by the Extensions pane, so the Extensions switch is
+what gates it. It opens `.extensionStore`: an empty query browses the store's front page (most
+installed first, three ten-row pages per fetch, more as the list nears its end), and anything typed
+searches every enabled registry through `ExtensionStoreClient.search`, the same merge the pane used
+to run in a sheet. ↵ pushes `.extensionStoreDetail` over the results — the palette's own back stack
+returns to the same query and row — and ⌘↵ installs without reading the page. The header's category
+dropdown (⌘P) sifts the loaded rows: the search endpoint has no category parameter, so a category
+under an empty query keeps fetching front pages until something matches or the page cap is hit.
+
+The detail page reads `backend.raycast.com/api/v1/extensions/<handle>/<name>`, which is where the
+store's own site gets screenshots (`metadata`), contributors and per-command blurbs; a GitHub
+listing has no page and shows what its manifest said. The page hides the search field and holds
+focus itself, so ↵ installs, ←/→ walk the screenshots and ⌘Y opens the selected one at panel size —
+an overlay inside the palette, closed by Escape at the panel like file search's Quick Look. README,
+source, the store page and the developer's profile open in the browser; nothing is rendered from
+GitHub.
+
+`ExtensionStoreSession` on `AppCore` holds the results, the open listing, the per-listing detail and
+install progress, so a re-summon lands where the store was left. Install runs through
+`ExtensionManager.install(listing:…)` exactly as the sheet did; the HUD reports the end because the
+row that showed progress may have scrolled away.
 
 ## Registries
 
