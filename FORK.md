@@ -64,4 +64,5 @@ Notes:
 
 - macOS version check: the cask required macOS ≥ 26; this machine runs 27. Xcode 26+ needed to build.
 - Local builds stamp `CFBundleShortVersionString` as `0.1.0` (release versions are stamped by CI), so after a local rebuild the app will offer the fork's latest release as an "update" — accepting it is harmless (same code, CI-built), or just ignore it.
+- A rebuilt app signed with a *recreated* `Tinycast Self-Signed` cert keeps the old, dead Accessibility row in System Settings: the toggle shows on, but TCC bound that row to the old cert's hash, so `AXIsProcessTrusted` stays false and the app reports "Not granted". Fix: `tccutil reset Accessibility com.tinycast.app`, then Grant Access… in the app and flip the fresh toggle. Compare `codesign -d -r- /Applications/Tinycast.app` against the `csreq` column of the system TCC.db to confirm.
 - Because the signing identity differs from the old Homebrew build, macOS treated the first launch of the forked build as a new app for TCC: Accessibility (and Input Monitoring, if used) needed re-granting once. Future rebuilds keep the grants as long as the `Tinycast Self-Signed` identity is unchanged.
