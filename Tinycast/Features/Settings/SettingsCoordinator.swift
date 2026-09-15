@@ -45,6 +45,7 @@ final class SettingsCoordinator {
             .environment(core.fallbacks)
             .environment(core.customCommands)
             .environment(core.snippetsStore)
+            .environment(core.featureRequestSettings)
             .environment(core.quicklinks)
             .environment(core.windowLayouts)
             .environment(core.calendarStore)

@@ -52,6 +52,12 @@ extension SettingsAnchor {
     static let fileSearchSearchScopes = Self(tab: .fileSearch, title: "Search Scopes")
     static let fileSearchIgnorePatterns = Self(tab: .fileSearch, title: "Ignore Patterns")
 
+    static let featureRequestFeatureRequest = Self(
+        tab: .featureRequest, title: "Request a Feature")
+    static let featureRequestRepository = Self(tab: .featureRequest, title: "Repository")
+    static let featureRequestAgent = Self(tab: .featureRequest, title: "Agent")
+    static let featureRequestCommands = Self(tab: .featureRequest, title: "Commands")
+
     static let notesNotes = Self(tab: .notes, title: "Notes")
     static let notesCommands = Self(tab: .notes, title: "Commands")
 

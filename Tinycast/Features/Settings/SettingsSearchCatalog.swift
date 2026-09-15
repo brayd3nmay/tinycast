@@ -109,7 +109,8 @@ enum SettingsSearchCatalog {
 
     static let entries: [SettingsSearchEntry] =
         general + applications + systemSettings
-        + systemActions + commands + quicklinks + fallbacks + ai + quickActions + fileSearch + notes
+        + systemActions + commands + quicklinks + fallbacks + ai + quickActions + featureRequest
+        + fileSearch + notes
         + snippets + navigation + windowManagement + clipboard + emoji + calendar
         + extensions + permissions + backup + about
 
@@ -323,6 +324,29 @@ enum SettingsSearchCatalog {
         .init(
             group: .fileSearchIgnorePatterns, "Ignore Patterns",
             keywords: ["exclude", "glob", "node_modules", "skip"])
+    ]
+
+    private static let featureRequest: [SettingsSearchEntry] = [
+        .init(
+            pane: .featureRequest,
+            keywords: ["agent", "pull request", "claude", "build", "automate"]),
+        .init(
+            .featureRequestFeatureRequest, "Enable Request a Feature",
+            keywords: ["agent", "autonomous", "pull request"]),
+        .init(
+            .featureRequestRepository, "Checkout",
+            keywords: ["repository", "folder", "git", "worktree"]),
+        .init(
+            .featureRequestRepository, "Base branch",
+            keywords: ["main", "target", "pull request"]),
+        .init(.featureRequestAgent, "Model", keywords: ["opus", "sonnet", "haiku", "claude"]),
+        .init(.featureRequestAgent, "Attempts", keywords: ["retry", "retries", "limit"]),
+        .init(
+            .featureRequestAgent, "Open the pull request",
+            keywords: ["pr", "push", "branch", "automatic"]),
+        .init(
+            group: .featureRequestCommands, "Feature request commands",
+            keywords: ["shortcut", "request a feature"])
     ]
 
     private static let notes: [SettingsSearchEntry] = [

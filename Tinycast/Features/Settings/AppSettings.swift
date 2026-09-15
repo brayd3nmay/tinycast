@@ -271,6 +271,11 @@ final class AppSettings {
         didSet { defaults.set(notesEnabled, forKey: Key.notesEnabled.rawValue) }
     }
 
+    /// Off by default: on means an agent may edit a checkout and push to it without being asked.
+    var featureRequestEnabled: Bool {
+        didSet { defaults.set(featureRequestEnabled, forKey: Key.featureRequestEnabled.rawValue) }
+    }
+
     /// Off by default: connecting a server is consent to run code Tinycast did not write.
     var mcpEnabled: Bool {
         didSet { defaults.set(mcpEnabled, forKey: Key.mcpEnabled.rawValue) }
@@ -559,6 +564,7 @@ final class AppSettings {
         fileSearchIgnorePatterns =
             defaults.stringArray(forKey: Key.fileSearchIgnorePatterns.rawValue) ?? []
         notesEnabled = defaults.bool(forKey: Key.notesEnabled.rawValue)
+        featureRequestEnabled = defaults.bool(forKey: Key.featureRequestEnabled.rawValue)
         aiEnabled = defaults.bool(forKey: Key.aiEnabled.rawValue)
         mcpEnabled = defaults.bool(forKey: Key.mcpEnabled.rawValue)
         customCommandsEnabled = defaults.bool(forKey: Key.customCommandsEnabled.rawValue)
