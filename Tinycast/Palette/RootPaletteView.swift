@@ -22,6 +22,7 @@ struct RootPaletteView: View {
     @Environment(QuicklinkStore.self) private var quicklinks
     @Environment(CustomCommandArgumentSession.self) private var customCommandArguments
     @Environment(SnippetsStore.self) private var snippets
+    @Environment(FeatureRequestStore.self) private var featureRequests
     @Environment(ExtensionManager.self) private var extensions
     @Environment(AppSettings.self) private var settings
     @Environment(\.metrics) private var metrics
@@ -68,6 +69,14 @@ struct RootPaletteView: View {
         case .snippets:
             return SnippetsScreen(
                 store: snippets, core: core, vm: vm, openActions: openActions)
+        case .featureRequestChat:
+            return FeatureRequestChatScreen(
+                request: core.featureRequestCoordinator.openRequest, 
+                coordinator: core.featureRequestCoordinator, core: core, vm: vm)
+        case .featureRequest:
+            return FeatureRequestScreen(
+                store: featureRequests, coordinator: core.featureRequestCoordinator, core: core,
+                vm: vm, openActions: openActions)
         case .emoji:
             return EmojiScreen(
                 index: emojiIndex, frequent: frequentEmoji, core: core, vm: vm,
@@ -716,6 +725,11 @@ struct RootPaletteView: View {
         if headerAccessory?.placement == .afterQuery, vm.mode != .ai { return "" }
         if vm.mode == .customCommandArguments {
             return customCommandArguments.prompt ?? vm.mode.placeholder
+        }
+        if vm.mode == .featureRequest,
+            let prompt = core.featureRequestCoordinator.searchPlaceholder
+        {
+            return prompt
         }
         // Inside a running command the search bar belongs to the extension.
         if vm.mode == .extensionCommand, let placeholder = extensionScreen.searchPlaceholder {

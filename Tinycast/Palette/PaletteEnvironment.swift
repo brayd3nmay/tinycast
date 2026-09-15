@@ -36,6 +36,8 @@ extension View {
             .environment(core.quicklinks)
             .environment(core.customCommandArguments)
             .environment(core.snippetsStore)
+            .environment(core.featureRequests)
+            .environment(core.featureRequestChat)
             .environment(core.extensions)
             .environment(core.calendarStore)
             .environment(core.meetingClock)

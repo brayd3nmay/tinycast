@@ -186,6 +186,8 @@ final class LauncherCoordinator {
             calendarCoordinator.openNextMeetingInCalendar()
         case .createEvent:
             calendarCoordinator.createEvent()
+        case .requestFeature, .featureRequests:
+            core.featureRequestCoordinator.showRequests()
         case .showNotes:
             dismissPalette()
             notesCoordinator.toggle()

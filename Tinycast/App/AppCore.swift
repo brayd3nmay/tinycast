@@ -53,6 +53,9 @@ final class AppCore {
     let aiSettings = AISettingsStore(
         isAppleIntelligenceAvailable: { AppleIntelligenceProvider.status().isAvailable })
     let mcpSettings = MCPSettingsStore()
+    let featureRequests = FeatureRequestStore()
+    let featureRequestSettings = FeatureRequestSettingsStore()
+    let featureRequestChat = FeatureRequestChatStore()
     let mcp = MCPServerManager()
     let quickActionSettings = QuickActionSettingsStore()
     let customQuickActions = CustomQuickActionStore()
@@ -112,6 +115,12 @@ final class AppCore {
         paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
         hotKeys: hotKeys, favorites: favorites, visibility: visibility,
         ranking: launcherRanking, aliases: aliases, activationPolicy: activationPolicy, core: self)
+    @ObservationIgnored private(set) lazy var featureRequestCoordinator =
+        FeatureRequestCoordinator(
+            store: featureRequests, chat: featureRequestChat,
+            settings: featureRequestSettings, appSettings: settings,
+            palette: palette, appIndex: appIndex, paletteCoordinator: paletteCoordinator,
+            settingsCoordinator: settingsCoordinator, core: self)
     @ObservationIgnored private(set) lazy var notesCoordinator = NotesCoordinator(
         store: notesStore,
         settings: settings,
@@ -223,6 +232,7 @@ final class AppCore {
             menuSearchCoordinator.applyEnabled()
             fileSearchCoordinator.applyPolicy()
             notesCoordinator.applyEnabled()
+            featureRequestCoordinator.applyEnabled()
             aiChatCoordinator.applyEnabled()
             mcpCoordinator.applyEnabled()
             customQuickActions.onChange = { [weak self] _ in
@@ -503,6 +513,9 @@ final class AppCore {
                 $0.menuSearchCoordinator.applyEnabled()
             })
         track({ _ = $0.notesEnabled }, reproject: { $0.notesCoordinator.applyEnabled() })
+        track(
+            { _ = $0.featureRequestEnabled },
+            reproject: { $0.featureRequestCoordinator.applyEnabled() })
         track({ _ = $0.aiEnabled }, reproject: { $0.aiChatCoordinator.applyEnabled() })
         track(
             {

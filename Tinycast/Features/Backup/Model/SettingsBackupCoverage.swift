@@ -67,6 +67,9 @@ enum SettingsBackupCoverage {
             "Background OCR is an opt-in processing choice on this Mac; a backup must not enable it.",
         AppSettingsKey.snippetsEnabled.rawValue:
             "Doubles as keyword-expansion consent; an import must not enable keystroke listening.",
+        AppSettingsKey.featureRequestEnabled.rawValue:
+            "Doubles as consent to let an agent edit a checkout and push to it; an import must not "
+            + "grant that, and the checkout it names exists only on this Mac.",
         AppSettingsKey.extensionPackageManager.rawValue:
             "Names a tool on this Mac; the machine a backup lands on may not have it.",
         AppSettingsKey.extensionRegistries.rawValue:

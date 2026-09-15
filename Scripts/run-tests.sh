@@ -143,6 +143,11 @@ run favorites-test         $L/FavoriteSlots.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run index calc-performance Tinycast/Features/Calculator/Model/*.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift
+run feature-request-test   Tinycast/Features/FeatureRequest/Model/*.swift \
+                           Tinycast/Features/FeatureRequest/Service/GitRunner.swift \
+                           Tinycast/Features/FeatureRequest/Service/SubprocessRunner.swift \
+                           Tinycast/Platform/ExecutableLocator.swift \
+                           Tinycast/Platform/AppPaths.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
