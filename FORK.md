@@ -6,10 +6,12 @@ Upstream's own docs cover the codebase: `docs/architecture.md`, `docs/developmen
 
 ## Why this fork exists
 
-Two extension-runtime bugs, found while debugging the Raycast **downloads-manager** extension (both broke it; both fixed here, neither upstream yet):
+Extension-runtime bugs hit while using Raycast extensions here — each broke the extension named, and all are fixed locally, none upstream yet:
 
-1. **`fs.opendirSync` missing** — `Scripts/raycast-runtime/src/node-shims.js` had no `opendirSync`/`opendir`/`promises.opendir`, so any extension iterating a directory with a `Dir` handle threw `TypeError: opendirSync is not a function`. Fixed with a `Dir` class backed by the existing one-shot host `readdir`.
-2. **File paste landed on the palette** — in `Tinycast/Features/Extensions/Service/ExtensionHostBridge.swift`, `Clipboard.paste({file})` synthesized ⌘V while Tinycast's palette was still the key window (the palette is a *non-activating* panel: the user's app stays active but the panel holds key focus, so HID-level ⌘V goes to it). The text-paste path handles this; the file path didn't. Fixed by hiding the palette, then `Paster.pasteCurrentContents(into:)` — the 0.35s settle delay there is empirical, from a working JS-side prototype of the same fix.
+1. **`fs.opendirSync` missing** (downloads-manager) — `Scripts/raycast-runtime/src/node-shims.js` had no `opendirSync`/`opendir`/`promises.opendir`, so any extension iterating a directory with a `Dir` handle threw `TypeError: opendirSync is not a function`. Fixed with a `Dir` class backed by the existing one-shot host `readdir`.
+2. **File paste landed on the palette** (downloads-manager) — in `Tinycast/Features/Extensions/Service/ExtensionHostBridge.swift`, `Clipboard.paste({file})` synthesized ⌘V while Tinycast's palette was still the key window (the palette is a *non-activating* panel: the user's app stays active but the panel holds key focus, so HID-level ⌘V goes to it). The text-paste path handles this; the file path didn't. Fixed by hiding the palette, then `Paster.pasteCurrentContents(into:)` — the 0.35s settle delay there is empirical, from a working JS-side prototype of the same fix.
+
+3. **`Buffer` was a class, not a function** (google-search) — `Scripts/raycast-runtime/src/buffer.js` exported `class Buffer extends Uint8Array`, so its statics were non-enumerable and it couldn't be called without `new`; Node's is a plain function with enumerable statics. safer-buffer (iconv-lite's dependency, bundled into anything that decodes a non-UTF-8 response) rebuilds Buffer from `for (key in Buffer)` and calls `Buffer(...)` unbound for whatever the copy missed, so every search failed with `TypeError: Cannot call a class constructor n without |new|`. Fixed by exporting a Node-shaped callable whose statics are copied on as own enumerable properties, with a `fixtures.mjs` case pinning the shape.
 
 These may land upstream eventually — check before merging upstream to avoid conflicts, and drop the local diff if upstream fixes them.
 

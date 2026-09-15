@@ -89,7 +89,7 @@ function compareBytes(a, b) {
   return a.length < b.length ? -1 : 1;
 }
 
-export class Buffer extends Uint8Array {
+class BufferClass extends Uint8Array {
   static from(value, encodingOrOffset, length) {
     if (typeof value === "string") return wrap(encode(value, encodingOrOffset));
     if (value instanceof ArrayBuffer) {
@@ -119,11 +119,11 @@ export class Buffer extends Uint8Array {
   }
 
   static allocUnsafe(size) {
-    return Buffer.alloc(size);
+    return BufferClass.alloc(size);
   }
 
   static concat(list, totalLength) {
-    const parts = list.map((part) => (part instanceof Uint8Array ? part : Buffer.from(part)));
+    const parts = list.map((part) => (part instanceof Uint8Array ? part : BufferClass.from(part)));
     const total = totalLength === undefined ? parts.reduce((sum, part) => sum + part.length, 0) : totalLength;
     const out = new Uint8Array(total);
     let offset = 0;
@@ -209,8 +209,20 @@ export class Buffer extends Uint8Array {
 /// `new Uint8Array(...)` results need the Buffer prototype grafted on: subclassing Uint8Array and
 /// then copying would double every allocation for large payloads.
 function wrap(bytes) {
-  Object.setPrototypeOf(bytes, Buffer.prototype);
+  Object.setPrototypeOf(bytes, BufferClass.prototype);
   return bytes;
+}
+
+/// Node's Buffer is a function, not a class: `Buffer(x)` is legal without `new`, and safer-buffer
+/// rebuilds a façade of it from whatever `for (key in Buffer)` yields — which skips class statics.
+export function Buffer(value, encodingOrOffset, length) {
+  return typeof value === "number" ? BufferClass.alloc(value) : BufferClass.from(value, encodingOrOffset, length);
+}
+
+Buffer.prototype = BufferClass.prototype;
+Object.setPrototypeOf(Buffer, BufferClass);
+for (const name of Object.getOwnPropertyNames(BufferClass)) {
+  if (name !== "length" && name !== "name" && name !== "prototype") Buffer[name] = BufferClass[name];
 }
 
 export const bufferModule = {

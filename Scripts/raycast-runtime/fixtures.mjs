@@ -241,6 +241,26 @@ export default function Command() {
 }
 `;
 
+// safer-buffer, which iconv-lite pulls in, rebuilds Buffer from whatever `for (key in Buffer)` hands
+// it and calls `Buffer(...)` without `new` for anything it did not get: a class satisfies neither.
+const bufferSource = `
+import { Buffer } from "node:buffer";
+
+export default async function Command() {
+  const copied = {};
+  for (const key in Buffer) if (Object.prototype.hasOwnProperty.call(Buffer, key)) copied[key] = Buffer[key];
+  globalThis.__buffer = {
+    statics: ["from", "alloc", "allocUnsafe", "concat", "compare", "isBuffer", "isEncoding", "byteLength"]
+      .filter((key) => typeof copied[key] !== "function"),
+    called: Buffer("hi", "utf8").toString(),
+    constructed: new Buffer("hi", "utf8").toString(),
+    sized: [Buffer(4).length, Array.from(Buffer(4)).join("")],
+    instance: [copied.from("hi") instanceof Buffer, Buffer.isBuffer(copied.alloc(1))],
+    ucs2: copied.from("hi", "ucs2").length,
+  };
+}
+`;
+
 // Bundled HTTP clients (axios) construct and probe a Response at module scope, before any component
 // mounts — a host-shaped constructor took the whole command down with them.
 const responseSource = `
@@ -746,6 +766,17 @@ export async function runFixtures() {
       "Error",
     ];
     expected.forEach((value, index) => check(`shim ${index}: ${value}`, markdown[index] === value, markdown[index]));
+  });
+
+  await run("Buffer keeps Node's callable shape", bufferSource, "no-view", async (harness) => {
+    const result = harness.call("globalThis.__buffer") ?? {};
+    check("the command ran", result.called !== undefined, harness.state.failures.join(" "));
+    check("a for-in copy picks up every static", result.statics?.length === 0, result.statics?.join(", "));
+    check("Buffer(...) allocates without new", result.called === "hi", result.called);
+    check("new Buffer(text) reads the text, not its length", result.constructed === "hi", result.constructed);
+    check("a numeric argument allocates zeroed", result.sized?.join() === "4,0000", result.sized?.join());
+    check("copied statics still return Buffers", result.instance?.every(Boolean), JSON.stringify(result.instance));
+    check("a copied from() keeps its encoding argument", result.ucs2 === 4, String(result.ucs2));
   });
 
   await run("Response takes the Web spec's constructor", responseSource, "no-view", async (harness) => {
