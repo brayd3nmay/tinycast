@@ -55,6 +55,12 @@ clipboard history, calculator history, launch ranking and frequent emoji),
 login item, and the Accessibility / Input Monitoring (TCC) grants — so a local build can neither read
 nor clobber an installed app's state, and both run side by side.
 
+It wears its own icon too — the bolt beside an orange hammer, `Tinycast/tinycast-dev.icon`, selected by
+`ASSETCATALOG_COMPILER_APPICON_NAME` on the Debug config. Side by side is only useful if the Dock, ⌘-Tab
+and every `NSApp.applicationIconImage` surface say which one you are looking at. The preview channel
+carries the third, `tinycast-preview.icon`; see
+[feature-request.md](features/feature-request.md#trying-a-build-before-you-merge).
+
 **What earns a place in Caches is refetchable, and nothing else.** Anything the user would notice the
 loss of goes in Application Support: `~/Library/Caches` is excluded from Time Machine and the system
 reclaims it under disk pressure without saying so.
