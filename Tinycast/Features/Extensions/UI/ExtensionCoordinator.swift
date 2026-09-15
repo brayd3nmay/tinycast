@@ -4,6 +4,8 @@ import AppKit
 @MainActor
 final class ExtensionCoordinator {
     private let extensions: ExtensionManager
+    private let store: ExtensionStoreSession
+    private let appIndex: AppIndex
     private let palette: PaletteState
     private let paletteCoordinator: PaletteCoordinator
     private let settingsCoordinator: SettingsCoordinator
@@ -13,6 +15,8 @@ final class ExtensionCoordinator {
 
     init(
         extensions: ExtensionManager,
+        store: ExtensionStoreSession,
+        appIndex: AppIndex,
         palette: PaletteState,
         paletteCoordinator: PaletteCoordinator,
         settingsCoordinator: SettingsCoordinator,
@@ -20,6 +24,8 @@ final class ExtensionCoordinator {
         core: AppCore
     ) {
         self.extensions = extensions
+        self.store = store
+        self.appIndex = appIndex
         self.palette = palette
         self.paletteCoordinator = paletteCoordinator
         self.settingsCoordinator = settingsCoordinator
@@ -31,7 +37,7 @@ final class ExtensionCoordinator {
 
     /// Applies both switches as they stand — on launch, and after a backup import moves them.
     func applyEnabled() {
-        extensions.setShowsInLauncher(settings.extensionsShowInLauncher)
+        applyExtensionsLauncherPresence()
         Task { await extensions.setEnabled(settings.extensionsEnabled) }
     }
 
@@ -40,6 +46,7 @@ final class ExtensionCoordinator {
         guard enabled != settings.extensionsEnabled else { return }
         guard enabled else {
             settings.extensionsEnabled = false
+            applyExtensionsLauncherPresence()
             Task { await extensions.setEnabled(false) }
             return
         }
@@ -58,12 +65,18 @@ final class ExtensionCoordinator {
             else { return }
 
             settings.extensionsEnabled = true
+            applyExtensionsLauncherPresence()
             await extensions.setEnabled(true)
         }
     }
 
+    /// The store command answers to the feature switch alone: finding one is not listing one.
     func applyExtensionsLauncherPresence() {
         extensions.setShowsInLauncher(settings.extensionsShowInLauncher)
+        appIndex.setCommandsVisible([.searchExtensionStore], settings.extensionsEnabled)
+        if !settings.extensionsEnabled, palette.mode == .extensionStore {
+            palette.prepare(mode: .launcher)
+        }
     }
 
     /// Resolved from the installed set: the launcher may never have been opened.
@@ -219,6 +232,47 @@ final class ExtensionCoordinator {
         settingsCoordinator.showSettings(tab: .extensions)
         NotificationCenter.default.post(
             name: .tinycastSelectExtension, object: owner.manifest.name)
+    }
+
+    // MARK: - The store
+
+    /// The palette's own store screen, which is where an extension is searched for and installed.
+    func showStore() {
+        guard settings.extensionsEnabled else { return }
+        paletteCoordinator.togglePalette(mode: .extensionStore)
+    }
+
+    /// Progress lands on the session rather than a HUD: the row and the pane both read it.
+    func installFromStore(_ listing: ExtensionListing) {
+        if case .installing = store.installState(for: listing) { return }
+        store.setInstallState(.installing(ExtensionInstaller.Progress.downloading.message), for: listing)
+        Task {
+            do {
+                try await extensions.install(
+                    listing: listing,
+                    packageManager: settings.extensionPackageManager,
+                    additionalSearchPaths: settings.extensionCustomSearchPaths,
+                    onProgress: { [store] progress in
+                        Task { @MainActor in store.setInstallState(.installing(progress.message), for: listing) }
+                    })
+                store.setInstallState(.installed, for: listing)
+                core.showMessage("Installed \(listing.title)")
+            } catch {
+                store.setInstallState(.failed(error.localizedDescription), for: listing)
+            }
+        }
+    }
+
+    func openStorePage(_ listing: ExtensionListing) {
+        guard let url = listing.pageURL else { return }
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        AppLauncher.open(url)
+    }
+
+    func copyStoreLink(_ listing: ExtensionListing) {
+        guard let url = listing.pageURL else { return }
+        Paster.copyPlainText(url.absoluteString)
+        core.showMessage("Copied link")
     }
 
     // MARK: - Host callbacks, routed here so the manager never touches a window itself

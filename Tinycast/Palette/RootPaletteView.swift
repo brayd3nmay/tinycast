@@ -23,6 +23,7 @@ struct RootPaletteView: View {
     @Environment(CustomCommandArgumentSession.self) private var customCommandArguments
     @Environment(SnippetsStore.self) private var snippets
     @Environment(ExtensionManager.self) private var extensions
+    @Environment(ExtensionStoreSession.self) private var extensionStore
     @Environment(AppSettings.self) private var settings
     @Environment(\.metrics) private var metrics
     @FocusState private var searchFocused: Bool
@@ -103,6 +104,10 @@ struct RootPaletteView: View {
         case .extensionCommand:
             return ExtensionCommandScreen(
                 screen: extensionScreen, extensions: extensions, vm: vm, openActions: openActions)
+        case .extensionStore:
+            return ExtensionStoreScreen(
+                session: extensionStore, extensions: extensions, core: core, vm: vm,
+                openActions: openActions)
         }
     }
 
@@ -294,6 +299,9 @@ struct RootPaletteView: View {
                 if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
                 if vm.mode == .menuSearch { menuSearch.filter(vm.query) }
                 if vm.mode == .switchWindows { windowSwitch.filter(vm.query) }
+                if vm.mode == .extensionStore {
+                    extensionStore.search(vm.query, in: settings.extensionRegistries)
+                }
                 // A command that took over the search text filters its own list.
                 if vm.mode == .extensionCommand, let handler = extensionScreen.searchTextHandler {
                     extensions.dispatch(handler: handler, arguments: [vm.query])
@@ -334,6 +342,12 @@ struct RootPaletteView: View {
                 }
                 if vm.mode != .menuSearch { menuSearch.reset() }
                 if vm.mode != .switchWindows { windowSwitch.reset() }
+                // Entering with a carried query still has to search; leaving drops what it found.
+                if vm.mode == .extensionStore {
+                    extensionStore.search(vm.query, in: settings.extensionRegistries)
+                } else {
+                    extensionStore.reset()
+                }
                 // Leaving the screen any other way than Escape still ends the command's session.
                 if vm.mode != .extensionCommand, extensions.running != nil, !extensions.isAuthorizing {
                     Task { await extensions.stop() }

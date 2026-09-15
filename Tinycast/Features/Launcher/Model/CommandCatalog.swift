@@ -61,6 +61,7 @@ extension SettingsTab {
         case .windowManagement: [.createWindowLayout, .captureWindowLayout]
         case .clipboard: [.clipboardHistory]
         case .emoji: [.searchEmoji]
+        case .extensions: [.searchExtensionStore]
         case .calendar:
             [.joinNextMeeting, .mySchedule, .createEvent, .copyMeetingLink, .openInCalendar]
         default: []

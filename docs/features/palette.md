@@ -103,6 +103,7 @@ answers through `perform(_:at:)`, so a new chord never adds a cast to the shell.
 | `.snippets` | `SnippetsScreen` | `SnippetsList` + preview (see [snippets.md](snippets.md#search-snippets)) |
 | `.customCommandArguments` | `CustomCommandArgumentsScreen` | `CustomCommandArgumentsView` (see [custom-commands.md](custom-commands.md#arguments)) |
 | `.extensionCommand` | `ExtensionCommandScreen` | `ExtensionCommandView` (see [extensions.md](extensions.md)) |
+| `.extensionStore` | `ExtensionStoreScreen` | `ExtensionStoreList` + preview (see [extensions.md](extensions.md#the-store)) |
 
 **Tab rings the three surfaces a reader opens directly — launcher → AI chat → clipboard → launcher**
 — unless the screen claims it through `tabTarget(from:backwards:)` (an extension's `Form` walks its

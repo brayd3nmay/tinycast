@@ -46,6 +46,7 @@ final class AppCore {
     let activationPolicy = ActivationPolicy()
     let uninstall = UninstallSession()
     let customCommandArguments = CustomCommandArgumentSession()
+    let extensionStore = ExtensionStoreSession()
     let notesStore: NotesStore
     let extensions: ExtensionManager
     let chatHistory: ChatHistoryStore
@@ -96,8 +97,9 @@ final class AppCore {
         appIndex: appIndex, runningApps: runningApps, hotKeys: hotKeys, favorites: favorites,
         visibility: visibility, ranking: launcherRanking, aliases: aliases, core: self)
     @ObservationIgnored private(set) lazy var extensionCoordinator = ExtensionCoordinator(
-        extensions: extensions, palette: palette, paletteCoordinator: paletteCoordinator,
-        settingsCoordinator: settingsCoordinator, settings: settings, core: self)
+        extensions: extensions, store: extensionStore, appIndex: appIndex, palette: palette,
+        paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
+        settings: settings, core: self)
     @ObservationIgnored private(set) lazy var windowCommandCoordinator = WindowCommandCoordinator(
         settings: settings, paletteCoordinator: paletteCoordinator, windowMover: windowMover,
         spaceSwitcher: spaceSwitcher)

@@ -103,6 +103,15 @@ struct ExtensionListing: Identifiable, Hashable, Sendable {
         case githubFolder(owner: String, repository: String, path: String, ref: String)
     }
 
+    /// One command the extension declares, as its manifest names it — the preview lists these.
+    struct Command: Identifiable, Hashable, Sendable {
+        let name: String
+        let title: String
+        let summary: String
+
+        var id: String { name }
+    }
+
     let id: String
     /// The manifest `name`, which is what an install is keyed by.
     let name: String
@@ -112,12 +121,19 @@ struct ExtensionListing: Identifiable, Hashable, Sendable {
     /// A store may ship one artwork per appearance; a GitHub manifest names a single icon.
     let lightIconURL: URL?
     let darkIconURL: URL?
-    let commandCount: Int
+    let commands: [Command]
+    let categories: [String]
+    /// Already raw: a browse URL is a page, and only the raw twin of it can be fetched.
+    let readmeURL: URL?
+    /// Where the extension lives on the web, which is all "Open in Browser" has to know.
+    let pageURL: URL?
     /// Nil where a registry doesn't count downloads, which is every GitHub one.
     let downloadCount: Int?
     let registryID: UUID
     let registryName: String
     let source: Source
+
+    var commandCount: Int { commands.count }
 
     /// Either side stands in for a missing other, so a one-artwork listing still draws.
     func iconURL(isDark: Bool) -> URL? {
