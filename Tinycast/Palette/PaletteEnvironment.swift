@@ -39,6 +39,7 @@ extension View {
             .environment(core.featureRequests)
             .environment(core.featureRequestChat)
             .environment(core.extensions)
+            .environment(core.extensionStore)
             .environment(core.calendarStore)
             .environment(core.meetingClock)
     }

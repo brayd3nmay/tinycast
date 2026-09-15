@@ -24,6 +24,7 @@ struct RootPaletteView: View {
     @Environment(SnippetsStore.self) private var snippets
     @Environment(FeatureRequestStore.self) private var featureRequests
     @Environment(ExtensionManager.self) private var extensions
+    @Environment(ExtensionStoreSession.self) private var extensionStore
     @Environment(AppSettings.self) private var settings
     @Environment(\.metrics) private var metrics
     @FocusState private var searchFocused: Bool
@@ -112,6 +113,12 @@ struct RootPaletteView: View {
         case .extensionCommand:
             return ExtensionCommandScreen(
                 screen: extensionScreen, extensions: extensions, vm: vm, openActions: openActions)
+        case .extensionStore:
+            return ExtensionStoreScreen(
+                session: extensionStore, core: core, vm: vm, openActions: openActions)
+        case .extensionStoreDetail:
+            return ExtensionStoreDetailScreen(
+                session: extensionStore, core: core, vm: vm, openActions: openActions)
         }
     }
 
@@ -159,6 +166,16 @@ struct RootPaletteView: View {
             })
     }
 
+    /// The store's category rows; the category sifts loaded results rather than re-searching.
+    private var storeCategoryContent: PopoverMenuContent {
+        PopoverMenuContent(
+            items: ExtensionStoreCategory.allCases.map { category in
+                PopoverMenuItem(title: category.title, systemImage: category.systemImage) {
+                    extensionStore.category = category
+                }
+            })
+    }
+
     /// The file search type filter's rows, built the way the clipboard's are.
     private var fileSearchFilterContent: PopoverMenuContent {
         PopoverMenuContent(
@@ -202,6 +219,10 @@ struct RootPaletteView: View {
         case .fileSearchFilter:
             return PaletteMenuContent(
                 popover: fileSearchFilterContent, selection: $menuSelection,
+                width: headerMenuWidth, onActivate: activateMenuItem)
+        case .storeCategory:
+            return PaletteMenuContent(
+                popover: storeCategoryContent, selection: $menuSelection,
                 width: headerMenuWidth, onActivate: activateMenuItem)
         case .aiModel:
             return PaletteMenuContent(
@@ -303,6 +324,9 @@ struct RootPaletteView: View {
                 if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
                 if vm.mode == .menuSearch { menuSearch.filter(vm.query) }
                 if vm.mode == .switchWindows { windowSwitch.filter(vm.query) }
+                if vm.mode == .extensionStore {
+                    extensionStore.search(vm.query, in: settings.extensionRegistries)
+                }
                 // A command that took over the search text filters its own list.
                 if vm.mode == .extensionCommand, let handler = extensionScreen.searchTextHandler {
                     extensions.dispatch(handler: handler, arguments: [vm.query])
@@ -319,6 +343,11 @@ struct RootPaletteView: View {
                 vm.selection = 0
                 scroll = ScrollIntent(kind: .top)
             }
+            // The category thins the loaded rows, so the old index points at a different one.
+            .onChange(of: extensionStore.category) {
+                vm.selection = 0
+                scroll = ScrollIntent(kind: .top)
+            }
             // The filter is part of the query, so narrowing re-runs it rather than thinning rows.
             .onChange(of: vm.fileSearchFilter) {
                 vm.selection = 0
@@ -330,9 +359,17 @@ struct RootPaletteView: View {
                 vm.clipboardFilter = .all
                 vm.fileSearchFilter = .all
                 vm.fileSearchQuickLook = false
+                extensionStore.isPreviewingScreenshot = false
                 if menuOpen { closeMenus() }
                 scroll = ScrollIntent(kind: .top)
                 searchFocused = !screen.hidesSearchField
+                // Entering with no query is the blank store's own request for the front page.
+                if vm.mode == .extensionStore {
+                    extensionStore.search(vm.query, in: settings.extensionRegistries)
+                }
+                if vm.mode != .extensionStoreDetail, extensionStore.opened != nil {
+                    extensionStore.closeDetail()
+                }
                 // Every way out of the Uninstall screen: back chevron, bare backspace, a fresh summon.
                 if vm.mode != .uninstall { uninstall.cancel() }
                 // Entering with no query is the blank screen's own request for recents.
@@ -438,7 +475,8 @@ struct RootPaletteView: View {
                 guard command || option else {
                     guard !vm.isComposing else { return .ignored }
                     // The fallback for a hidden-field screen with no control focused to answer.
-                    let answersWithoutFocus = screen.hidesSearchField && screen.rows.isEmpty
+                    let answersWithoutFocus =
+                        screen.hidesSearchField && (screen.rows.isEmpty || screen.actsWithoutRows)
                     guard searchFocused || answersWithoutFocus else { return .ignored }
                     activateSelection()
                     return .handled
@@ -534,6 +572,7 @@ struct RootPaletteView: View {
                 case .extensionAccessory: toggleExtensionSearchAccessory()
                 case .clipboardFilter: toggleClipboardFilter()
                 case .fileSearchFilter: toggleFileSearchFilter()
+                case .storeCategory: toggleStoreCategory()
                 case .ignored: return .ignored
                 }
                 return .handled
@@ -601,6 +640,14 @@ struct RootPaletteView: View {
                     title: vm.fileSearchFilter.title, systemImage: vm.fileSearchFilter.systemImage,
                     isOpen: openMenu == .fileSearchFilter, help: "Filter by type  ⌘P",
                     action: toggleFileSearchFilter)
+            }
+            if !isCollapsed, vm.mode == .extensionStore {
+                headerGutter(width: metrics.spacing.md)
+                HeaderMenuButton(
+                    title: extensionStore.category.title,
+                    systemImage: extensionStore.category.systemImage,
+                    isOpen: openMenu == .storeCategory, help: "Filter by category  ⌘P",
+                    action: toggleStoreCategory)
             }
             if !isCollapsed, vm.mode == .ai {
                 headerGutter(width: metrics.spacing.md)
@@ -882,6 +929,15 @@ struct RootPaletteView: View {
         open(.fileSearchFilter, highlighting: active)
     }
 
+    private func toggleStoreCategory() {
+        if openMenu == .storeCategory {
+            closeMenus()
+            return
+        }
+        let active = ExtensionStoreCategory.allCases.firstIndex(of: extensionStore.category) ?? 0
+        open(.storeCategory, highlighting: active)
+    }
+
     /// Opens on the choice the dropdown holds, exactly as the clipboard filter opens on its own.
     private func toggleExtensionSearchAccessory() {
         if openMenu == .extensionAccessory {
@@ -966,7 +1022,8 @@ struct RootPaletteView: View {
         case .app: .bottomLeading
         case .actions: .bottomTrailing
         case .argumentOptions: .belowHeaderTrailing
-        case .clipboardFilter, .fileSearchFilter, .aiModel, .aiReasoning, .extensionAccessory:
+        case .clipboardFilter, .fileSearchFilter, .storeCategory, .aiModel, .aiReasoning,
+            .extensionAccessory:
             .belowHeaderTrailing
         case nil: nil
         }
@@ -1158,6 +1215,7 @@ private enum OpenMenu {
     case app
     case clipboardFilter
     case fileSearchFilter
+    case storeCategory
     case aiModel
     case aiReasoning
 }

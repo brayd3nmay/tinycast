@@ -329,9 +329,16 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         installPasteMonitor()
         // Handled at the panel: a focused preview answers Escape before the palette's own handler.
         panel.onEscape = { [weak self] in
-            guard let self, core.palette.fileSearchQuickLook else { return false }
-            core.palette.fileSearchQuickLook = false
-            return true
+            guard let self else { return false }
+            if core.palette.fileSearchQuickLook {
+                core.palette.fileSearchQuickLook = false
+                return true
+            }
+            if core.extensionStore.isPreviewingScreenshot {
+                core.extensionStore.isPreviewingScreenshot = false
+                return true
+            }
+            return false
         }
         // Handled at the panel: the field editor or a missing main menu eats these first.
         panel.onCommandShortcut = { [weak self] event in

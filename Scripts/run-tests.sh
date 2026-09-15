@@ -388,7 +388,9 @@ run ext-metadata-test      $E/Model/ExtensionCommandMetadata.swift \
                            $E/Service/ExtensionCommandMetadataStore.swift
 run ext-store-test         $E/Model/ExtensionRegistry.swift \
                            $E/Model/ExtensionPackageManager.swift \
-                           $E/Model/ExtensionStoreResponse.swift
+                           $E/Model/ExtensionStoreResponse.swift \
+                           $E/Model/ExtensionStoreCategory.swift \
+                           $E/Model/ExtensionStoreDetail.swift
 run ext-form-test          $E/Model/ExtensionFormMetrics.swift \
                            $E/Model/ExtensionFormField.swift \
                            $E/UI/ExtensionFormKey.swift \

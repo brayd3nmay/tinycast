@@ -6,7 +6,6 @@ struct ExtensionsSettingsView: View {
     @State private var expanded: String?
     @State private var filter = ""
     @State private var importCandidates: ImportCandidates?
-    @State private var browsingStore = false
     @State private var editingRegistries = false
     @State private var error: String?
     /// Extensions Raycast has built that aren't here yet, refreshed whenever the pane appears.
@@ -36,6 +35,7 @@ struct ExtensionsSettingsView: View {
             Group {
                 compatibility
                 install
+                FeatureCommandsSection(owner: .extensions, anchor: .extensionsCommands)
                 library
             }
             .settingsEnabled(settings.extensionsEnabled)
@@ -61,9 +61,6 @@ struct ExtensionsSettingsView: View {
                     Task { await importAll(chosen) }
                 },
                 onCancel: { importCandidates = nil })
-        }
-        .sheet(isPresented: $browsingStore) {
-            ExtensionStoreSheet(onClose: { browsingStore = false })
         }
         .sheet(isPresented: $editingRegistries) {
             ExtensionRegistriesSheet(onClose: { editingRegistries = false })
@@ -177,13 +174,13 @@ struct ExtensionsSettingsView: View {
     /// Three rows rather than a menu: search, copy and folder behave differently.
     private var install: some View {
         Section {
-            SettingsRow(title: "Search extensions", subtitle: searchSubtitle, anchor: .extensionsInstall) {
-                Image(systemName: "magnifyingglass")
+            SettingsRow(title: "Extension Store", subtitle: searchSubtitle, anchor: .extensionsInstall) {
+                Image(systemName: "storefront")
                     .foregroundStyle(.secondary)
             } trailing: {
-                // Beside search, because this is the setting that decides what search can find.
+                // Beside the store, because this is the setting that decides what it can find.
                 Button("Registries…") { editingRegistries = true }
-                Button("Search…") { browsingStore = true }
+                Button("Open Store…") { core.extensionCoordinator.showStore() }
             }
             // A state of this row, not a card: the same job as the button beside it.
             SettingsRow(
@@ -266,8 +263,8 @@ struct ExtensionsSettingsView: View {
     /// Names what searching will cover, so the row says what the Registries button is for.
     private var searchSubtitle: String {
         let on = core.settings.extensionRegistries.filter(\.isEnabled)
-        guard !on.isEmpty else { return "No registries enabled — searching would find nothing." }
-        return "Searching \(on.map(\.name).joined(separator: ", "))."
+        guard !on.isEmpty else { return "No registries enabled — the store would find nothing." }
+        return "Browse, preview and install from the palette. Searching \(on.map(\.name).joined(separator: ", "))."
     }
 
     private var importSubtitle: String {

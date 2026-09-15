@@ -11,6 +11,8 @@ struct ExtensionStoreTests {
         registryParsing()
         registryDefaults()
         storeResponse()
+        storeDetail()
+        storeCategories()
         gitHubTree()
         manifestSummary()
         packageManagers()
@@ -131,8 +133,101 @@ struct ExtensionStoreTests {
         let url = ExtensionStoreResponse.searchURL(query: "co ffee", page: 2)?.absoluteString ?? ""
         check("the query is escaped", url.contains("q=co%20ffee"))
         check("the page is passed", url.contains("page=2"))
+        check("a full page is asked for", url.contains("per_page=50"))
         // Case-sensitive: "macos" matches only extensions listing no platforms.
         check("macOS is requested, as the endpoint spells it", url.contains("platform=macOS"))
+
+        let browse = ExtensionStoreResponse.browseURL(page: 3)?.absoluteString ?? ""
+        check("the front page is the plain listing", browse.hasPrefix("https://www.raycast.com/frontend_api/extensions?"))
+        check("browsing pages", browse.contains("page=3"))
+        check("and asks for macOS", browse.contains("platform=macOS"))
+    }
+
+    // MARK: - The store's detail page
+
+    static let detailPayload = """
+        {"id":"abc","name":"coffee","title":"Coffee","description":"Prevent sleep",
+         "author":{"id":"u1","name":"Max Schmidt","handle":"mooxl",
+                   "avatar":"https://files.raycast.com/max","initials":"MS",
+                   "avatar_placeholder_color":"#DC829A"},
+         "icons":{"light":"https://files.raycast.com/icon","dark":null},
+         "categories":["System","Productivity"],
+         "commands":[{"name":"caffeinate","title":"Caffeinate","description":"Keep awake",
+                      "icons":{"light":null,"dark":null}},
+                     {"name":"decaffeinate"}],
+         "tools":[{"name":"toggle"}],
+         "download_count":124218,"status":"active","updated_at":1788465682,
+         "metadata":["https://files.raycast.com/shot1","https://files.raycast.com/shot2"],
+         "contributors":[{"id":"u1","name":"Max Schmidt","handle":"mooxl"},
+                         {"id":"u2","name":"","handle":"helper","initials":"he"}],
+         "past_contributors":[{"id":"u3","name":"Old Hand","handle":"old"}],
+         "readme_url":"https://github.com/raycast/extensions/tree/c325a1a/extensions/coffee/README.md",
+         "source_url":"https://github.com/raycast/extensions/tree/c325a1a/extensions/coffee/",
+         "store_url":"https://www.raycast.com/mooxl/coffee",
+         "download_url":"https://example.com/coffee.zip"}
+        """
+
+    static func storeDetail() {
+        print("\n# store detail")
+        guard let detail = try? ExtensionStoreResponse.parseDetail(Data(detailPayload.utf8)) else {
+            check("the detail payload parses", false)
+            return
+        }
+        check("the title is read", detail.title == "Coffee")
+        check("the author is a person", detail.author?.handle == "mooxl")
+        check("with an avatar", detail.author?.avatarURL?.absoluteString == "https://files.raycast.com/max")
+        check("the store's tile colour survives", detail.author?.placeholderColorHex == "#DC829A")
+        check(
+            "screenshots are the metadata images, in order",
+            detail.screenshotURLs.map(\.lastPathComponent) == ["shot1", "shot2"])
+        check("every command is listed", detail.commands.count == 2)
+        check("a command keeps its blurb", detail.commands[0].description == "Keep awake")
+        check("a command without a title falls back to its name", detail.commands[1].title == "decaffeinate")
+        check("tools mark an AI extension", detail.hasAITools)
+        check("installs are read", detail.downloadCount == 124_218)
+        check("the update time is an epoch", detail.updatedAt?.timeIntervalSince1970 == 1_788_465_682)
+        check("the README link is kept", detail.readmeURL?.lastPathComponent == "README.md")
+        // The author leads and is not repeated by the contributor list that also names them.
+        check(
+            "contributors are credited once, author first",
+            detail.contributors.map(\.id) == ["u1", "u2", "u3"])
+        check("a nameless contributor shows by handle", detail.contributors[1].name == "helper")
+        check("a profile is on the store", detail.contributors[2].profileURL?.absoluteString == "https://www.raycast.com/old")
+
+        check(
+            "a truncated body throws",
+            (try? ExtensionStoreResponse.parseDetail(Data("{".utf8))) == nil)
+
+        let url = ExtensionStoreResponse.detailURL(handle: "mooxl", name: "coffee")?.absoluteString ?? ""
+        check("the detail endpoint is the backend's", url == "https://backend.raycast.com/api/v1/extensions/mooxl/coffee")
+        check("no handle means no page", ExtensionStoreResponse.detailURL(handle: "", name: "coffee") == nil)
+
+        // The row carries what the detail needs to be found, and what the row itself shows.
+        guard
+            let listing = try? ExtensionStoreResponse.parseStore(
+                Data(#"{"data":[\#(detailPayload)]}"#.utf8), registry: .store
+            ).first
+        else {
+            check("a detail-shaped row parses", false)
+            return
+        }
+        check("the row keeps the author's handle", listing.authorHandle == "mooxl")
+        check("and avatar", listing.authorAvatarURL != nil)
+        check("and categories", listing.categories == ["System", "Productivity"])
+        check("and the store page", listing.storeURL?.absoluteString == "https://www.raycast.com/mooxl/coffee")
+        check("and whether it ships AI tools", listing.hasAITools)
+    }
+
+    static func storeCategories() {
+        print("\n# store categories")
+        check("every category matches all", ExtensionStoreCategory.all.matches([]))
+        check("a category matches its own name", ExtensionStoreCategory.media.matches(["Media", "Fun"]))
+        check("case does not matter", ExtensionStoreCategory.media.matches(["media"]))
+        check("a category rejects the rest", !ExtensionStoreCategory.media.matches(["Fun"]))
+        check("the AI category reads the store's name", ExtensionStoreCategory.ai.matches(["AI Extensions"]))
+        check("all is first in the menu", ExtensionStoreCategory.allCases.first == .all)
+        let titles = Set(ExtensionStoreCategory.allCases.map(\.title))
+        check("titles are unique", titles.count == ExtensionStoreCategory.allCases.count)
     }
 
     // MARK: - A GitHub registry

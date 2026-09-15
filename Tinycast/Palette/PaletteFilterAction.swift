@@ -7,6 +7,8 @@ enum PaletteFilterAction: Equatable {
     case extensionAccessory
     case clipboardFilter
     case fileSearchFilter
+    /// The store's category dropdown.
+    case storeCategory
     /// No filter on the header, so the key stays with the search field.
     case ignored
 
@@ -19,6 +21,7 @@ enum PaletteFilterAction: Equatable {
         case .extensionCommand: return commandHasAccessory ? .extensionAccessory : .ignored
         case .clipboard: return .clipboardFilter
         case .fileSearch: return .fileSearchFilter
+        case .extensionStore: return .storeCategory
         default: return .ignored
         }
     }
