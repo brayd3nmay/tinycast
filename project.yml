@@ -66,6 +66,8 @@ targets:
         Debug:
           PRODUCT_NAME: Tinycast Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.tinycast.app.dev
+          # A channel is only side-by-side if you can tell the two apart in the Dock.
+          ASSETCATALOG_COMPILER_APPICON_NAME: tinycast-dev
 
   ClipboardTextHelper:
     type: tool

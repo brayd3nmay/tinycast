@@ -10,8 +10,13 @@ enum PreviewBuild {
     static var appName: String { productName + ".app" }
 
     /// Passed on the `xcodebuild` line, the way `release.yml` already names a channel.
+    ///
+    /// The icon is named too: the gate builds Debug, so without it a preview wears the dev hammer.
     static var buildSettings: [String] {
-        ["PRODUCT_NAME=" + productName, "PRODUCT_BUNDLE_IDENTIFIER=" + bundleID]
+        [
+            "PRODUCT_NAME=" + productName, "PRODUCT_BUNDLE_IDENTIFIER=" + bundleID,
+            "ASSETCATALOG_COMPILER_APPICON_NAME=tinycast-preview"
+        ]
     }
 
     /// Caches, not Application Support: a preview is reproducible, so macOS may purge it freely.

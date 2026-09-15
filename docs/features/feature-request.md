@@ -213,6 +213,11 @@ That is the pattern `release.yml` uses, and it is why `ClipboardTextHelper` pins
 a channel rename hits every target. The preview therefore launches *beside* whatever Tinycast is
 already running instead of colliding with it for a bundle identifier.
 
+`ASSETCATALOG_COMPILER_APPICON_NAME` rides the same line, because the gate builds **Debug** and would
+otherwise hand a preview the dev channel's hammer. A preview wears `tinycast-preview.icon` — the bolt
+inside a magnifying glass — so the thing you are trying is never mistaken for the thing you were
+already running.
+
 The global chord belongs to whichever Tinycast registered it first, so a preview is opened from its
 own menu-bar item rather than ⌥Space.
 
